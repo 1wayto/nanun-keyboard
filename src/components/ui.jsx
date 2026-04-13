@@ -16,6 +16,8 @@ export const BtnSmall = ({ children, onClick, active, disabled, accent, danger }
       background: disabled ? C.surface : active ? C.accentDim : danger ? C.danger + "15" : "transparent",
       color: disabled ? C.textDim : danger ? C.danger : active || accent ? C.accent : C.textMuted,
       transition: "all 0.15s",
+      whiteSpace: "nowrap",
+      flexShrink: 0,
     }}
   >
     {children}

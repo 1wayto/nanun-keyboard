@@ -226,15 +226,35 @@ export default function ThreePreview({ keys, plateSettings, opts3d, onReady, onC
     // ── Orbit controls ──
     let dragBtn = -1,
       px = 0,
-      py = 0;
+      py = 0,
+      pinchDist = 0,
+      touchCount = 0;
     const cv = ren.domElement;
     cv.addEventListener("contextmenu", (e) => e.preventDefault());
+    const getTouchDist = (t) => {
+      const dx = t[0].clientX - t[1].clientX;
+      const dy = t[0].clientY - t[1].clientY;
+      return Math.sqrt(dx * dx + dy * dy);
+    };
+    const getTouchCenter = (t) => ({
+      clientX: (t[0].clientX + t[1].clientX) / 2,
+      clientY: (t[0].clientY + t[1].clientY) / 2,
+    });
     const oD = (e) => {
       if (e.touches) {
-        dragBtn = 0;
-        const p = e.touches[0];
-        px = p.clientX;
-        py = p.clientY;
+        touchCount = e.touches.length;
+        if (e.touches.length === 2) {
+          dragBtn = 1; // two-finger = pan + pinch zoom
+          pinchDist = getTouchDist(e.touches);
+          const c = getTouchCenter(e.touches);
+          px = c.clientX;
+          py = c.clientY;
+        } else {
+          dragBtn = 0;
+          const p = e.touches[0];
+          px = p.clientX;
+          py = p.clientY;
+        }
         return;
       }
       if (e.button === 1) e.preventDefault();
@@ -260,6 +280,34 @@ export default function ThreePreview({ keys, plateSettings, opts3d, onReady, onC
     };
     const oM = (e) => {
       if (dragBtn < 0) return;
+
+      // Touch: handle pinch zoom + two-finger pan
+      if (e.touches) {
+        if (e.touches.length === 2) {
+          // Pinch zoom
+          const newDist = getTouchDist(e.touches);
+          const delta = pinchDist - newDist;
+          st.current.radius = Math.max(30, Math.min(800, st.current.radius + delta * 0.5));
+          pinchDist = newDist;
+          // Two-finger pan
+          const c = getTouchCenter(e.touches);
+          const dx = c.clientX - px;
+          const dy = c.clientY - py;
+          px = c.clientX;
+          py = c.clientY;
+          const theta = st.current.theta;
+          const rightX = Math.sin(theta);
+          const rightZ = -Math.cos(theta);
+          const panScale = st.current.radius * 0.002;
+          st.current.centerX -= dx * rightX * panScale;
+          st.current.centerZ -= dx * rightZ * panScale;
+          st.current.centerX += dy * Math.cos(theta) * panScale * Math.cos(st.current.phi);
+          st.current.centerZ += dy * Math.sin(theta) * panScale * Math.cos(st.current.phi);
+          return;
+        }
+        if (e.touches.length >= 2) return; // ignore 3+ fingers
+      }
+
       const p = e.touches ? e.touches[0] : e;
       const dx = p.clientX - px;
       const dy = p.clientY - py;
@@ -267,7 +315,7 @@ export default function ThreePreview({ keys, plateSettings, opts3d, onReady, onC
       py = p.clientY;
 
       if (dragBtn === 0) {
-        // Left click: orbit
+        // Left click / single touch: orbit
         st.current.theta -= dx * 0.007;
         st.current.phi = Math.max(0.05, Math.min(Math.PI - 0.05, st.current.phi - dy * 0.007));
       } else if (dragBtn === 1) {
@@ -284,6 +332,7 @@ export default function ThreePreview({ keys, plateSettings, opts3d, onReady, onC
     };
     const oU = () => {
       dragBtn = -1;
+      touchCount = 0;
       st.current.pressedKeys.clear();
     };
     const oW = (e) => {
@@ -296,7 +345,7 @@ export default function ThreePreview({ keys, plateSettings, opts3d, onReady, onC
     cv.addEventListener("mouseleave", oU);
     cv.addEventListener("wheel", oW, { passive: false });
     cv.addEventListener("touchstart", oD, { passive: true });
-    cv.addEventListener("touchmove", oM, { passive: true });
+    cv.addEventListener("touchmove", oM, { passive: false });
     cv.addEventListener("touchend", oU);
 
     let anim;
