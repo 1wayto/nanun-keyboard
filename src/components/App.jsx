@@ -463,7 +463,7 @@ export default function App() {
           <span>nanun.me · open-source keyboard design studio</span>
           <span style={{ display: "flex", gap: 10 }}>
             <span>MIT License</span>
-            <span>v1.1</span>
+            <span>v1.2</span>
           </span>
         </div>
       )}
