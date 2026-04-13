@@ -138,13 +138,14 @@ function SliderRow({ label, value, min, max, step, onChange, unit }) {
   );
 }
 
-export default function LayersPanel({ opts3d, setOpts3d, collapsed, setCollapsed }) {
+export default function LayersPanel({ opts3d, setOpts3d, collapsed, setCollapsed, isMobile }) {
   const panelRef = useRef(null);
   const [pos, setPos] = useState({ x: 8, y: 48 });
   const dragRef = useRef(null);
 
-  // Dragging
+  // Dragging (desktop only)
   useEffect(() => {
+    if (isMobile) return;
     const onMove = (e) => {
       if (!dragRef.current) return;
       setPos({
@@ -159,14 +160,34 @@ export default function LayersPanel({ opts3d, setOpts3d, collapsed, setCollapsed
       window.removeEventListener("mousemove", onMove);
       window.removeEventListener("mouseup", onUp);
     };
-  }, []);
+  }, [isMobile]);
 
   const startDrag = (e) => {
+    if (isMobile) return;
     dragRef.current = { ox: e.clientX - pos.x, oy: e.clientY - pos.y };
   };
 
   const set = (key, val) => setOpts3d((o) => ({ ...o, [key]: val }));
 
+  // Mobile: collapsed = small button at bottom-left
+  if (collapsed && isMobile) {
+    return (
+      <div
+        style={{
+          position: "absolute", left: 8, bottom: 8, zIndex: 20,
+          background: `${C.bg}ee`, border: `1px solid ${C.border}`, borderRadius: 6,
+          padding: "6px 12px", cursor: "pointer", fontSize: 10, fontWeight: 600,
+          color: C.textMuted, letterSpacing: 0.5, backdropFilter: "blur(8px)",
+          touchAction: "manipulation",
+        }}
+        onClick={() => setCollapsed(false)}
+      >
+        Layers
+      </div>
+    );
+  }
+
+  // Desktop: collapsed = small button at dragged position
   if (collapsed) {
     return (
       <div
@@ -183,10 +204,33 @@ export default function LayersPanel({ opts3d, setOpts3d, collapsed, setCollapsed
     );
   }
 
+  const mobilePanelStyle = {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    bottom: 0,
+    maxHeight: "55vh",
+    overflowY: "auto",
+    WebkitOverflowScrolling: "touch",
+    background: `${C.bg}f5`,
+    borderTop: `1px solid ${C.border}`,
+    borderRadius: "12px 12px 0 0",
+    zIndex: 20,
+    fontFamily: FONT_PRIMARY,
+    fontSize: 10,
+    color: C.text,
+    backdropFilter: "blur(8px)",
+    touchAction: "pan-y",
+  };
+
   return (
-    <div ref={panelRef} style={{ ...panelStyle, left: pos.x, top: pos.y }}>
+    <div ref={panelRef} style={isMobile ? mobilePanelStyle : { ...panelStyle, left: pos.x, top: pos.y }}>
       {/* Header */}
-      <div style={headerStyle} onMouseDown={startDrag}>
+      <div style={{
+        ...headerStyle,
+        cursor: isMobile ? "default" : "grab",
+        ...(isMobile ? { padding: "8px 12px", justifyContent: "space-between" } : {}),
+      }} onMouseDown={startDrag}>
         <span>Layers</span>
         <span style={{ cursor: "pointer", fontSize: 12, color: C.textDim }} onClick={() => setCollapsed(true)}>×</span>
       </div>
