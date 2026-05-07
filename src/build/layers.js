@@ -18,9 +18,12 @@ import {
   colChannelHolesForLayout,
   accessHolesForLayout,
 } from "./cells";
+import { computeSplits } from "./moduleSplit";
 
 const OUTER_MARGIN = 8;
 const CORNER_RADIUS = 4;
+const SEAM_COLOR = 0xDB1A1A; // matches project accent — red
+const SEAM_WIDTH = 0.8;       // mm — visible but thin
 
 // Bottom-up stack order. Each entry's `kind` selects the geometry strategy.
 // `composite` entries supply `subs` describing the printable sub-slabs that
@@ -176,17 +179,48 @@ function buildLayer(def, keys) {
   return def.kind === "composite" ? buildCompositeLayer(def, keys) : buildSimpleLayer(def, keys);
 }
 
+// Add seam markers (thin red strips) at each split X for this layer.
+// Markers are children of the top-level layer object so they move with it
+// during exploded-view animation.
+function addSeamMarkers(layerObj, def, splits, layoutH) {
+  if (!splits.length) return;
+  const mat = new THREE.MeshStandardMaterial({
+    color: SEAM_COLOR,
+    emissive: SEAM_COLOR,
+    emissiveIntensity: 0.4,
+    roughness: 0.5,
+  });
+  const seamH = layoutH - 4; // 2mm margin from front/back edges
+  splits.forEach((x) => {
+    const geo = new THREE.BoxGeometry(SEAM_WIDTH, def.thickness + 0.05, seamH);
+    const m = new THREE.Mesh(geo, mat);
+    // Layer object's local Y range is [0, thickness]. Center of layer = thickness/2.
+    m.position.set(x, def.thickness / 2, 0);
+    m.userData = { seam: true, splitX: x };
+    layerObj.add(m);
+  });
+}
+
 // Build all top-level layers, positioned bottom-up. Returns an array aligned
 // to LAYER_DEFS, each item a Mesh or Group with `position.y` set so its
 // bottom rests at the cumulative stack height.
-export function buildAllLayers(keys) {
-  const objs = LAYER_DEFS.map((def) => buildLayer(def, keys));
+export function buildAllLayers(keys, options = {}) {
+  const { bedWidth = Infinity } = options;
+  const { w: layoutW, h: layoutH } = outlineMetrics(keys);
+
+  const objs = LAYER_DEFS.map((def, i) => {
+    const obj = buildLayer(def, keys);
+    const splits = computeSplits(layoutW, bedWidth, i);
+    addSeamMarkers(obj, def, splits, layoutH);
+    obj.userData.splits = splits;
+    return obj;
+  });
+
   let yCursor = 0;
   objs.forEach((obj, i) => {
     obj.userData.baseY = yCursor;
     obj.position.y = yCursor;
     yCursor += LAYER_DEFS[i].thickness;
   });
-  const { w, h } = outlineMetrics(keys);
-  return { layers: objs, footprint: { w, h }, totalHeight: yCursor };
+  return { layers: objs, footprint: { w: layoutW, h: layoutH }, totalHeight: yCursor };
 }

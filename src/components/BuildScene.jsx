@@ -103,24 +103,27 @@ export default function BuildScene({ keys, buildOpts }) {
     };
   }, []);
 
-  // Rebuild layers when keys or layer defs change.
+  // Rebuild layers when keys, bed width, or other geometry-affecting opts change.
   useEffect(() => {
     const s = st.current;
     if (!s.layerGroup) return;
     while (s.layerGroup.children.length) {
       const m = s.layerGroup.children.pop();
+      m.traverse?.((c) => {
+        c.geometry?.dispose?.();
+        c.material?.dispose?.();
+      });
       m.geometry?.dispose?.();
       m.material?.dispose?.();
     }
-    const { layers, footprint } = buildAllLayers(keys);
+    const { layers, footprint } = buildAllLayers(keys, { bedWidth: buildOpts.bedWidth });
     layers.forEach((mesh) => s.layerGroup.add(mesh));
     s.layers = layers;
-    // Auto-fit camera on first build / when footprint changes meaningfully.
     const r = Math.max(footprint.w, footprint.h, 80) * 1.8;
     s.orbit.radius = r;
     s.orbit.target.set(0, 8, 0);
     s.applyCamera();
-  }, [keys]);
+  }, [keys, buildOpts.bedWidth]);
 
   // Apply visibility + exploded view on opt change. No geometry rebuild.
   useEffect(() => {

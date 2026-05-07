@@ -14,12 +14,13 @@ export default function BuildView({ keys }) {
       topCase: true,
     },
     explode: 12,
+    bedWidth: 220, // Adventurer 5M default
   });
 
   return (
     <>
       <BuildScene keys={keys} buildOpts={buildOpts} />
-      <BuildPanel buildOpts={buildOpts} setBuildOpts={setBuildOpts} />
+      <BuildPanel keys={keys} buildOpts={buildOpts} setBuildOpts={setBuildOpts} />
     </>
   );
 }
