@@ -3,10 +3,12 @@ import { C, KEY_SIZES, FONT_PRIMARY, FONT_MONO, inputStyle, setTheme, THEMES } f
 import { getBounds } from "../utils";
 import { PRESETS } from "../layouts";
 import { exportSVG, exportDXF, exportKLE, importKLE, exportKiCadCSV, download } from "../export";
-import ThreePreview from "./ThreePreview";
+// Old 3D preview deactivated for Phase A — keep imports commented for revival.
+// import ThreePreview from "./ThreePreview";
+// import ViewGizmo from "./ViewGizmo";
+// import LayersPanel from "./LayersPanel";
 import LayoutEditor from "./LayoutEditor";
-import ViewGizmo from "./ViewGizmo";
-import LayersPanel from "./LayersPanel";
+import BuildView from "./BuildView";
 import { BtnSmall, SectionLabel, PropLabel, ExportBtn, GitHubIcon } from "./ui";
 import HowToModal from "./HowToModal";
 
@@ -137,7 +139,8 @@ export default function App() {
           <div style={{ display: "flex", background: C.surface, borderRadius: 8, border: `1px solid ${C.border}`, overflow: "hidden" }}>
             {[
               ["layout", "Layout"],
-              ["3d", "3D"],
+              // ["3d", "3D"],  // deactivated for Phase A — kept for revival
+              ["build", "Build & Flash"],
             ].map(([v, l]) => (
               <button
                 key={v}
@@ -231,6 +234,7 @@ export default function App() {
         </BtnSmall>
         <div style={{ width: 1, height: 20, background: C.border, flexShrink: 0 }} />
         <BtnSmall onClick={() => setShowImport(!showImport)}>KLE Import</BtnSmall>
+        {/* 3D-tab toolbar deactivated for Phase A
         {view === "3d" && (
           <>
             <BtnSmall onClick={() => setOpts3d(o => ({...o, cameraMode: o.cameraMode === "perspective" ? "iso" : "perspective"}))}>
@@ -238,7 +242,7 @@ export default function App() {
             </BtnSmall>
             <BtnSmall onClick={() => previewRef.current?.focusView()}>Focus</BtnSmall>
           </>
-        )}
+        )} */}
         {!isMobile && (
           <div style={{ marginLeft: "auto", fontFamily: FONT_MONO, fontSize: 10, color: C.textDim, display: "flex", gap: 12 }}>
             <span>{keys.length} keys</span>
@@ -302,9 +306,12 @@ export default function App() {
 
       {/* MAIN CANVAS */}
       <div style={{ flex: 1, position: "relative", minHeight: isMobile ? 0 : 420, overflow: "hidden", touchAction: "none" }}>
-        {view === "layout" ? (
+        {view === "layout" && (
           <LayoutEditor keys={keys} selectedId={selectedId} onSelect={setSelectedId} onMove={moveKey} />
-        ) : (
+        )}
+        {view === "build" && <BuildView keys={keys} />}
+        {/* Old 3D preview branch deactivated for Phase A:
+        {view === "3d" && (
           <>
             <ThreePreview keys={keys} plateSettings={plateSettings} opts3d={opts3d}
               onReady={(ctrl) => { previewRef.current = ctrl; }}
@@ -317,7 +324,7 @@ export default function App() {
               collapsed={layersPanelCollapsed} setCollapsed={setLayersPanelCollapsed}
               isMobile={isMobile} />
           </>
-        )}
+        )} */}
       </div>
 
       {/* BOTTOM PANEL TOGGLE (mobile) */}

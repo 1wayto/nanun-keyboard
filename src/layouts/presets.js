@@ -86,6 +86,12 @@ const I100 = [
   R(5.5, "Ctrl:1.25 Win:1.25 Alt:1.25 Space:6.25 Alt:1.25 Win:1.25 Mn:1.25 Ctrl:1.25 _:0.25 ← ↓ → _:0.25 0:2 ."),
 ];
 
+/* ── Ecosystem prototypes (printable parts validation, spec §9) ── */
+const PROTO_2x3 = [
+  R(0, "Q W E"),
+  R(1, "A S D"),
+];
+
 /* ── Macropads ── */
 const PAD_2x4 = [
   { id: 1, x: 0, y: 0, w: 1, h: 1, label: "M1" },
@@ -114,6 +120,8 @@ const NUMPAD_3x3 = [
  * Keys set to null are section headers in the preset dropdown.
  */
 export const PRESETS = {
+  ecosystem: null,
+  "2×3 Proto": gen(PROTO_2x3),
   macropads: null,
   "2×4 Pad": PAD_2x4,
   "3×3 Numpad": NUMPAD_3x3,
