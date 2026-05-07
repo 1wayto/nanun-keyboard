@@ -1,26 +1,49 @@
 // 5-layer printable-part geometry generators.
-// Phase A: flat extrudes built from a rounded-rect outer shape with
-// per-key cutouts. Reuses the Shape + holes pattern from ThreePreview.
-// Later phases will add socket pockets, diode pockets, wire channels (electrical
-// layer), ESP32 bay (bottom case), and module splitting.
+// Each top-level layer is either a single Mesh or a composite Group of stacked
+// sub-meshes (used by the electrical layer to keep pockets, row channels,
+// and column channels as separate printable sub-slabs — spec §4.3).
+//
+// Coordinate system: shape is built in XY (origin = layer center), then
+// rotateX(-π/2) sends extrusion along world Y. Final mesh's local Y runs
+// 0..thickness, so positioning by `mesh.position.y = baseY` puts the bottom
+// of the layer at world Y = baseY.
 
 import * as THREE from "three";
-import { UNIT, CUTOUT } from "../constants";
-import { getBounds, isISOEnter } from "../utils";
+import { CUTOUT } from "../constants";
+import { getBounds } from "../utils";
+import {
+  keyCenterLocal,
+  pocketsHolesForLayout,
+  rowChannelHolesForLayout,
+  colChannelHolesForLayout,
+  accessHolesForLayout,
+} from "./cells";
 
-// Stack order: bottomCase (Y bottom) → accessCover → electrical → switchPlate → topCase (Y top).
-// Per spec §2 the assembled stack reads top-down; this list is bottom-up so
-// stacking by accumulated thickness gives the correct vertical order.
+const OUTER_MARGIN = 8;
+const CORNER_RADIUS = 4;
+
+// Bottom-up stack order. Each entry's `kind` selects the geometry strategy.
+// `composite` entries supply `subs` describing the printable sub-slabs that
+// stack within the layer's height. The composite's total thickness equals
+// the sum of sub thicknesses; the panel UI shows one toggle per entry.
 export const LAYER_DEFS = [
   { id: "bottomCase",  label: "Bottom case",  thickness: 5,   color: 0x2c3038, kind: "solid" },
-  { id: "accessCover", label: "Access cover", thickness: 2,   color: 0x5a6068, kind: "solid" },
-  { id: "electrical",  label: "Electrical",   thickness: 6,   color: 0xc89a3a, kind: "switchHoles" },
+  { id: "accessCover", label: "Access cover", thickness: 2,   color: 0x5a6068, kind: "accessCover" },
+  {
+    id: "electrical",
+    label: "Electrical",
+    thickness: 6,
+    color: 0xc89a3a,
+    kind: "composite",
+    subs: [
+      { id: "row_channels", thickness: 1.0, color: 0xb8862c, generator: rowChannelHolesForLayout },
+      { id: "col_channels", thickness: 1.0, color: 0xc89a3a, generator: colChannelHolesForLayout },
+      { id: "pockets",      thickness: 4.0, color: 0xd4ad48, generator: pocketsHolesForLayout },
+    ],
+  },
   { id: "switchPlate", label: "Switch plate", thickness: 1.5, color: 0x9aa0a8, kind: "switchHoles" },
   { id: "topCase",     label: "Top case",     thickness: 5,   color: 0x3a4046, kind: "topShell" },
 ];
-
-const OUTER_MARGIN = 8; // mm — case wall width around the keys
-const CORNER_RADIUS = 4;
 
 function roundedRectShape(w, h, r) {
   const s = new THREE.Shape();
@@ -48,39 +71,26 @@ function squareHolePath(cx, cy, side) {
   return p;
 }
 
-// Build the keyboard outline shape (rounded rect) centered at origin.
-// Returns { shape, w, h } in mm.
-function outlineShape(keys) {
-  const b = getBounds(keys, OUTER_MARGIN);
-  const w = b.maxX - b.minX;
-  const h = b.maxY - b.minY;
-  return { shape: roundedRectShape(w, h, CORNER_RADIUS), w, h, bounds: b };
+function outlineMetrics(keys) {
+  const bounds = getBounds(keys, OUTER_MARGIN);
+  const w = bounds.maxX - bounds.minX;
+  const h = bounds.maxY - bounds.minY;
+  return { bounds, w, h };
 }
 
-// Convert a key's center to layer-local mm coords (origin = layer center).
-// Layout Y in 2D editor grows downward; we negate so 3D Z (front=+) reads
-// front-to-back consistent with the on-screen layout.
-function keyCenterLocal(k, bounds) {
-  const layoutCx = (bounds.minX + bounds.maxX) / 2;
-  const layoutCy = (bounds.minY + bounds.maxY) / 2;
-  const offsetX = isISOEnter(k) ? -0.25 : 0;
-  const cxMm = (k.x + offsetX + k.w / 2) * UNIT;
-  const cyMm = (k.y + (k.h || 1) / 2) * UNIT;
-  return { x: cxMm - layoutCx, y: -(cyMm - layoutCy) };
+function newOuter(w, h) {
+  return roundedRectShape(w, h, CORNER_RADIUS);
 }
 
-function addSwitchHoles(shape, keys, bounds) {
+function addSwitchCutouts(shape, keys, bounds) {
   keys.forEach((k) => {
-    const { x, y } = keyCenterLocal(k, bounds);
-    shape.holes.push(squareHolePath(x, y, CUTOUT));
+    const c = keyCenterLocal(k, bounds);
+    shape.holes.push(squareHolePath(c.x, c.y, CUTOUT));
   });
 }
 
-// Top-shell inner cutout: a rounded rect inset by case-wall thickness.
-// Phase A: simple inset rect. Later phases can replace with switch-hole array
-// for a frame-and-grille style.
-function addTopShellCutout(shape, w, h) {
-  const wallThickness = OUTER_MARGIN - 2; // leave 2mm rim around keys
+function addTopShellInnerCutout(shape, w, h) {
+  const wallThickness = OUTER_MARGIN - 2;
   const innerW = w - wallThickness * 2;
   const innerH = h - wallThickness * 2;
   const inner = new THREE.Path();
@@ -98,56 +108,85 @@ function addTopShellCutout(shape, w, h) {
   shape.holes.push(inner);
 }
 
-// Build a single layer mesh. Returns the THREE.Mesh in layer-local coords:
-// X right, Z front-to-back, Y = layer thickness extrusion (vertical in world).
-function buildLayerMesh(def, keys) {
-  const { shape, w, h, bounds } = outlineShape(keys);
-
-  if (def.kind === "switchHoles") {
-    addSwitchHoles(shape, keys, bounds);
-  } else if (def.kind === "topShell") {
-    addTopShellCutout(shape, w, h);
-  }
-  // "solid" kind: no holes.
-
-  const geo = new THREE.ExtrudeGeometry(shape, {
-    depth: def.thickness,
-    bevelEnabled: true,
-    bevelSize: 0.4,
-    bevelThickness: 0.3,
-    bevelSegments: 1,
-    curveSegments: 6,
-  });
-  // Shape is in XY; extrudes along +Z. Rotate so extrusion runs along world Y.
-  geo.rotateX(-Math.PI / 2);
-
-  const mat = new THREE.MeshStandardMaterial({
-    color: def.color,
+function makeMaterial(color) {
+  return new THREE.MeshStandardMaterial({
+    color,
     roughness: 0.55,
     metalness: 0.05,
     side: THREE.DoubleSide,
   });
+}
 
-  const mesh = new THREE.Mesh(geo, mat);
+function extrudeShape(shape, depth, { bevel = true } = {}) {
+  const geo = new THREE.ExtrudeGeometry(shape, {
+    depth,
+    bevelEnabled: bevel,
+    bevelSize: 0.4,
+    bevelThickness: 0.3,
+    bevelSegments: 1,
+    curveSegments: 12,
+  });
+  geo.rotateX(-Math.PI / 2);
+  return geo;
+}
+
+function buildSimpleLayer(def, keys) {
+  const { bounds, w, h } = outlineMetrics(keys);
+  const shape = newOuter(w, h);
+
+  if (def.kind === "switchHoles") {
+    addSwitchCutouts(shape, keys, bounds);
+  } else if (def.kind === "topShell") {
+    addTopShellInnerCutout(shape, w, h);
+  } else if (def.kind === "accessCover") {
+    accessHolesForLayout(keys, bounds).forEach((p) => shape.holes.push(p));
+  }
+  // "solid": no holes.
+
+  const mesh = new THREE.Mesh(extrudeShape(shape, def.thickness), makeMaterial(def.color));
   mesh.name = def.id;
   mesh.userData = { layerId: def.id, label: def.label, thickness: def.thickness };
   return mesh;
 }
 
-// Build all 5 layers as Three.Meshes positioned in a vertical stack.
-// Returns { layers, footprint } where layers is an array in bottom-up order
-// matching LAYER_DEFS, and footprint is { w, h } of the keyboard outline.
+function buildCompositeLayer(def, keys) {
+  const { bounds, w, h } = outlineMetrics(keys);
+  const group = new THREE.Group();
+  group.name = def.id;
+  group.userData = { layerId: def.id, label: def.label, thickness: def.thickness };
+
+  let ySub = 0;
+  for (const sub of def.subs) {
+    const subShape = newOuter(w, h);
+    sub.generator(keys, bounds).forEach((p) => subShape.holes.push(p));
+    const mesh = new THREE.Mesh(
+      extrudeShape(subShape, sub.thickness, { bevel: false }),
+      makeMaterial(sub.color),
+    );
+    mesh.position.y = ySub;
+    mesh.name = `${def.id}__${sub.id}`;
+    mesh.userData = { layerId: def.id, subId: sub.id, thickness: sub.thickness };
+    group.add(mesh);
+    ySub += sub.thickness;
+  }
+  return group;
+}
+
+function buildLayer(def, keys) {
+  return def.kind === "composite" ? buildCompositeLayer(def, keys) : buildSimpleLayer(def, keys);
+}
+
+// Build all top-level layers, positioned bottom-up. Returns an array aligned
+// to LAYER_DEFS, each item a Mesh or Group with `position.y` set so its
+// bottom rests at the cumulative stack height.
 export function buildAllLayers(keys) {
-  const meshes = LAYER_DEFS.map((def) => buildLayerMesh(def, keys));
+  const objs = LAYER_DEFS.map((def) => buildLayer(def, keys));
   let yCursor = 0;
-  meshes.forEach((mesh, i) => {
-    const def = LAYER_DEFS[i];
-    // After rotateX(-π/2), local Y runs 0..thickness (bottom..top of layer).
-    // Set position so the layer's bottom sits at yCursor.
-    mesh.userData.baseY = yCursor;
-    mesh.position.y = yCursor;
-    yCursor += def.thickness;
+  objs.forEach((obj, i) => {
+    obj.userData.baseY = yCursor;
+    obj.position.y = yCursor;
+    yCursor += LAYER_DEFS[i].thickness;
   });
-  const { w, h } = outlineShape(keys);
-  return { layers: meshes, footprint: { w, h }, totalHeight: yCursor };
+  const { w, h } = outlineMetrics(keys);
+  return { layers: objs, footprint: { w, h }, totalHeight: yCursor };
 }
