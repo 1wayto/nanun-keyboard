@@ -8,7 +8,10 @@ import { exportSVG, exportDXF, exportKLE, importKLE, exportKiCadCSV, download } 
 // import ViewGizmo from "./ViewGizmo";
 // import LayersPanel from "./LayersPanel";
 import LayoutEditor from "./LayoutEditor";
-import BuildView from "./BuildView";
+// Build & Flash retired in favor of CAD + Flash tabs.
+// import BuildView from "./BuildView";
+import CadView from "./CadView";
+import FlashView from "./FlashView";
 import { BtnSmall, SectionLabel, PropLabel, ExportBtn, GitHubIcon } from "./ui";
 import HowToModal from "./HowToModal";
 
@@ -139,8 +142,8 @@ export default function App() {
           <div style={{ display: "flex", background: C.surface, borderRadius: 8, border: `1px solid ${C.border}`, overflow: "hidden" }}>
             {[
               ["layout", "Layout"],
-              // ["3d", "3D"],  // deactivated for Phase A — kept for revival
-              ["build", "Build & Flash"],
+              ["cad", "CAD"],
+              ["flash", "Flash"],
             ].map(([v, l]) => (
               <button
                 key={v}
@@ -309,22 +312,8 @@ export default function App() {
         {view === "layout" && (
           <LayoutEditor keys={keys} selectedId={selectedId} onSelect={setSelectedId} onMove={moveKey} />
         )}
-        {view === "build" && <BuildView keys={keys} />}
-        {/* Old 3D preview branch deactivated for Phase A:
-        {view === "3d" && (
-          <>
-            <ThreePreview keys={keys} plateSettings={plateSettings} opts3d={opts3d}
-              onReady={(ctrl) => { previewRef.current = ctrl; }}
-              onCameraMove={setCamAngles} />
-            <div style={{ position: "absolute", top: 8, right: 8, zIndex: 10 }}>
-              <ViewGizmo theta={camAngles.theta} phi={camAngles.phi}
-                onSnap={(t, p) => previewRef.current?.snapCamera(t, p)} />
-            </div>
-            <LayersPanel opts3d={opts3d} setOpts3d={setOpts3d}
-              collapsed={layersPanelCollapsed} setCollapsed={setLayersPanelCollapsed}
-              isMobile={isMobile} />
-          </>
-        )} */}
+        {view === "cad" && <CadView keys={keys} plateSettings={plateSettings} />}
+        {view === "flash" && <FlashView />}
       </div>
 
       {/* BOTTOM PANEL TOGGLE (mobile) */}
