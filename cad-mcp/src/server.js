@@ -11,6 +11,7 @@ import { measure } from "./measure.js";
 import { validate } from "./validate.js";
 import { exportPart } from "./exportPart.js";
 import { initOCCT } from "./occt.js";
+import { getMatrix, validateMatrix } from "./electrical.js";
 import { PARAM_PATHS } from "../../shared/cad/schema.js";
 
 export function createServer({ stateFile, repoRoot }) {
@@ -44,6 +45,10 @@ export function createServer({ stateFile, repoRoot }) {
       inputSchema: { type: "object", required: ["partId", "format", "path"],
         properties: { partId: { type: "string" }, format: { type: "string" }, path: { type: "string" } } } },
     { name: "listParts", description: "List registered and active part types.",
+      inputSchema: { type: "object", properties: {} } },
+    { name: "getMatrix", description: "Compute the row/column matrix and ESP32 GPIO pinmap for the current layout.",
+      inputSchema: { type: "object", properties: {} } },
+    { name: "validateMatrix", description: "Run matrix validation; returns [] when clean. Codes: unknown_board, pin_overflow, unsafe_gpio, gpio_collision, gpio_too_few.",
       inputSchema: { type: "object", properties: {} } },
   ];
 
@@ -91,6 +96,12 @@ export function createServer({ stateFile, repoRoot }) {
         break;
       case "listParts":
         result = { registered: ["plate"], active: store.read().parts };
+        break;
+      case "getMatrix":
+        result = getMatrix(getLayoutFromEnv(), store.read());
+        break;
+      case "validateMatrix":
+        result = validateMatrix(getLayoutFromEnv(), store.read());
         break;
       default:
         throw new Error(`unknown tool: ${name}`);
