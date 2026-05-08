@@ -14,7 +14,7 @@ import CadView from "./CadView";
 import FlashView from "./FlashView";
 import { BtnSmall, SectionLabel, PropLabel, ExportBtn, GitHubIcon } from "./ui";
 import { useCadState } from "../cad/syncState";
-import { downloadPlate } from "../cad/exportClient";
+import { downloadPlate, downloadPinmap, downloadWireSvg } from "../cad/exportClient";
 import HowToModal from "./HowToModal";
 
 export default function App() {
@@ -439,6 +439,8 @@ export default function App() {
               <ExportBtn label="DXF" sub="Plate" onClick={() => download(exportDXF(keys, plateSettings), "plate.dxf")} />
               <ExportBtn label="STEP" sub="Plate 3D" onClick={() => downloadPlate(keys, plateSettings, "step")} />
               <ExportBtn label="STL" sub="Plate 3D" onClick={() => downloadPlate(keys, plateSettings, "stl")} />
+              <ExportBtn label="Pinmap" sub="JSON" onClick={() => downloadPinmap(keys, cadState)} />
+              <ExportBtn label="Wire" sub="SVG" onClick={() => downloadWireSvg(keys, cadState)} />
               <ExportBtn label="JSON" sub="KLE" onClick={() => download(exportKLE(keys), "layout.json", "application/json")} />
               <ExportBtn label="CSV" sub="KiCad" onClick={() => download(exportKiCadCSV(keys), "switches.csv")} />
             </div>
