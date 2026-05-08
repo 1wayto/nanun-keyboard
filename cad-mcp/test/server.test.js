@@ -31,18 +31,34 @@ afterAll(async () => {
 });
 
 describe("MCP server", () => {
-  it("registers all seven tools", async () => {
+  it("registers nine tools (added getMatrix + validateMatrix)", async () => {
     const { tools } = await client.listTools();
     const names = tools.map((t) => t.name).sort();
     expect(names).toEqual([
       "exportPart",
       "getLayout",
+      "getMatrix",
       "getState",
       "listParts",
       "measure",
       "setParam",
       "validate",
+      "validateMatrix",
     ]);
+  });
+
+  it("getMatrix returns the matrix for the seeded layout", async () => {
+    const r = await client.callTool({ name: "getMatrix", arguments: {} });
+    const json = JSON.parse(r.content[0].text);
+    expect(json.dims.rows).toBe(1);
+    expect(json.dims.cols).toBe(1);
+    expect(json.keyMatrix.k0).toMatchObject({ row: 0, col: 0 });
+  });
+
+  it("validateMatrix returns [] for the seeded layout", async () => {
+    const r = await client.callTool({ name: "validateMatrix", arguments: {} });
+    const json = JSON.parse(r.content[0].text);
+    expect(json).toEqual([]);
   });
 
   it("getState returns DEFAULT_STATE on first call", async () => {
