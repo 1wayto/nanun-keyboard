@@ -4,15 +4,19 @@ import { C, FONT_PRIMARY, FONT_MONO } from "../constants";
 import { initCad } from "../cad/init";
 import { buildPlate } from "../cad/buildPlate";
 import { solidToGeometry } from "../cad/tessellate";
+import { useCadState } from "../cad/syncState";
 
 // CAD tab — replicad-driven parametric view.
 // Phase 1: switch plate only. Future parts (top case, bottom case, cover,
 // electrical) plug into the same scene as additional layers.
-export default function CadView({ keys, plateSettings }) {
+export default function CadView({ keys }) {
   const mountRef = useRef(null);
   const st = useRef({});
   const [status, setStatus] = useState("init"); // init | ready | error
   const [errMsg, setErrMsg] = useState("");
+
+  const { state: cadState } = useCadState();
+  const plateSettings = cadState?.plate ?? { thickness: 1.5, margin: 5, cornerRadius: 2, cutoutSize: 14 };
 
   // Scene init — once on mount.
   useEffect(() => {
@@ -155,7 +159,7 @@ export default function CadView({ keys, plateSettings }) {
       }
     })();
     return () => { cancelled = true; };
-  }, [status, keys, plateSettings.thickness, plateSettings.margin, plateSettings.cornerRadius]);
+  }, [status, keys, plateSettings.thickness, plateSettings.margin, plateSettings.cornerRadius, plateSettings.cutoutSize]);
 
   return (
     <div style={{ position: "absolute", inset: 0 }}>

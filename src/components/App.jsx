@@ -13,6 +13,7 @@ import LayoutEditor from "./LayoutEditor";
 import CadView from "./CadView";
 import FlashView from "./FlashView";
 import { BtnSmall, SectionLabel, PropLabel, ExportBtn, GitHubIcon } from "./ui";
+import { useCadState } from "../cad/syncState";
 import HowToModal from "./HowToModal";
 
 export default function App() {
@@ -33,7 +34,8 @@ export default function App() {
   const [keys, setKeys] = useState(PRESETS["60% ANSI"]);
   const [selectedId, setSelectedId] = useState(null);
   const [view, setView] = useState("layout");
-  const [plateSettings, setPlateSettings] = useState({ thickness: 1.5, margin: 5, cornerRadius: 2 });
+  const { state: cadState, setParam: setCadParam } = useCadState();
+  const plateSettings = cadState?.plate ?? { thickness: 1.5, margin: 5, cornerRadius: 2, cutoutSize: 14 };
   const [showImport, setShowImport] = useState(false);
   const [importText, setImportText] = useState("");
   const [opts3d, setOpts3d] = useState({ switches: false, capProfile: "cherry", caseStyle: "tray", slope: 6, ledEnabled: false, ledFacing: "south", ledMode: "static", ledBrightness: 80, ledSpeed: 1.0, cameraMode: "perspective", switchExplode: 0, layerExplode: 0, showPlate: true, showPCB: true });
@@ -312,7 +314,7 @@ export default function App() {
         {view === "layout" && (
           <LayoutEditor keys={keys} selectedId={selectedId} onSelect={setSelectedId} onMove={moveKey} />
         )}
-        {view === "cad" && <CadView keys={keys} plateSettings={plateSettings} />}
+        {view === "cad" && <CadView keys={keys} />}
         {view === "flash" && <FlashView />}
       </div>
 
@@ -416,7 +418,7 @@ export default function App() {
                     min={mn}
                     max={mx}
                     value={plateSettings[k]}
-                    onChange={(e) => setPlateSettings((p) => ({ ...p, [k]: parseFloat(e.target.value) || mn }))}
+                    onChange={(e) => setCadParam(`plate.${k}`, parseFloat(e.target.value) || mn)}
                     style={{ ...inputStyle, width: 40, fontFamily: FONT_MONO }}
                   />
                   <span style={{ fontSize: 9, color: C.textDim }}>mm</span>
