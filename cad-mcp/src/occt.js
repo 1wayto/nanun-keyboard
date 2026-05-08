@@ -46,10 +46,15 @@ async function doInit() {
   globalThis.__dirname = wasmDir;
   globalThis.__filename = join(wasmDir, "replicad_single.js");
 
-  const opencascade = (
-    await import(pathToFileURL(join(wasmDir, "replicad_single.js")).href)
-  ).default;
-  const OC = await opencascade({ wasmBinary });
-  setOC(OC);
-  return OC;
+  try {
+    const opencascade = (
+      await import(pathToFileURL(join(wasmDir, "replicad_single.js")).href)
+    ).default;
+    const OC = await opencascade({ wasmBinary });
+    setOC(OC);
+    return OC;
+  } finally {
+    delete globalThis.__dirname;
+    delete globalThis.__filename;
+  }
 }
