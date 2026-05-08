@@ -1,11 +1,11 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
+import cadStatePlugin from "./vite-plugin-cad-state.js";
 
 export default defineConfig({
-  plugins: [react()],
+  plugins: [react(), cadStatePlugin()],
   base: "/",
   optimizeDeps: {
-    // The Emscripten-generated OCCT loader confuses Vite's pre-bundler.
     exclude: ["replicad-opencascadejs"],
   },
 });
