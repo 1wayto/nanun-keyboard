@@ -1,15 +1,5 @@
-import { fileURLToPath, pathToFileURL } from "node:url";
-import { dirname, join } from "node:path";
 import { buildPlate } from "../../shared/cad/parts/plate.js";
-
-// Import measureVolume from the repo-root replicad instance so it shares the
-// same OC registration as plate.js (cad-mcp has its own node_modules/replicad).
-const here = dirname(fileURLToPath(import.meta.url));
-const repoRoot = join(here, "..", "..");
-const replicadUrl = pathToFileURL(
-  join(repoRoot, "node_modules", "replicad", "dist", "replicad.js"),
-).href;
-const { measureVolume } = await import(replicadUrl);
+import { measureVolume } from "./replicad.js";
 
 const UNIT = 19.05;
 

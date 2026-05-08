@@ -4,18 +4,11 @@
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { dirname, join } from "node:path";
 import { readFileSync } from "node:fs";
+import { setOC } from "./replicad.js";
 
 // Resolve the repo root (two dirs up from cad-mcp/src/).
 const here = dirname(fileURLToPath(import.meta.url));
 const repoRoot = join(here, "..", "..");
-
-// Import setOC from the repo-root replicad ESM build so this module and
-// shared/cad/parts/plate.js share the same module-instance state.
-// (cad-mcp has its own node_modules/replicad which is a different instance.)
-const replicadUrl = pathToFileURL(
-  join(repoRoot, "node_modules", "replicad", "dist", "replicad.js"),
-).href;
-const { setOC } = await import(replicadUrl);
 
 let initPromise = null;
 
