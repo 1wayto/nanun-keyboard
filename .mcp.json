@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "nanun-cad": {
+      "command": "node",
+      "args": ["cad-mcp/src/server.js"]
+    }
+  }
+}

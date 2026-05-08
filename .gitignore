@@ -6,3 +6,4 @@ dist/
 Thumbs.db
 reference_images/*
 .claude/
+cad-state.json
