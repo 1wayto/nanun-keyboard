@@ -1,10 +1,11 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 import { C, FONT_PRIMARY, FONT_MONO } from "../constants";
 import { initCad } from "../cad/init";
 import { buildPlate } from "../cad/buildPlate";
 import { solidToGeometry } from "../cad/tessellate";
 import { useCadState } from "../cad/syncState";
+import { validateGeometric } from "../../shared/cad/validateGeometric";
 
 // CAD tab — replicad-driven parametric view.
 // Phase 1: switch plate only. Future parts (top case, bottom case, cover,
@@ -17,6 +18,10 @@ export default function CadView({ keys }) {
 
   const { state: cadState } = useCadState();
   const plateSettings = cadState?.plate ?? { thickness: 1.5, margin: 5, cornerRadius: 2, cutoutSize: 14 };
+  const issues = useMemo(
+    () => (cadState ? validateGeometric(keys, cadState) : []),
+    [keys, cadState],
+  );
 
   // Scene init — once on mount.
   useEffect(() => {
@@ -164,6 +169,34 @@ export default function CadView({ keys }) {
   return (
     <div style={{ position: "absolute", inset: 0 }}>
       <div ref={mountRef} style={{ width: "100%", height: "100%" }} />
+      {issues.length > 0 && (
+        <div
+          style={{
+            position: "absolute", top: 8, left: 8, right: 8,
+            display: "flex", flexDirection: "column", gap: 4,
+            pointerEvents: "none",
+            fontFamily: FONT_MONO,
+          }}
+        >
+          {issues.map((iss, i) => (
+            <div
+              key={i}
+              style={{
+                background: "#DB1A1Ad8",
+                color: "#fff",
+                padding: "4px 8px",
+                borderRadius: 4,
+                fontSize: 11,
+                fontWeight: 600,
+                boxShadow: "0 1px 4px rgba(0,0,0,0.25)",
+              }}
+            >
+              <span style={{ opacity: 0.8, marginRight: 6 }}>{iss.code}</span>
+              {iss.msg}
+            </div>
+          ))}
+        </div>
+      )}
       {status !== "ready" && (
         <div
           style={{

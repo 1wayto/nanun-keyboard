@@ -14,6 +14,7 @@ import CadView from "./CadView";
 import FlashView from "./FlashView";
 import { BtnSmall, SectionLabel, PropLabel, ExportBtn, GitHubIcon } from "./ui";
 import { useCadState } from "../cad/syncState";
+import { downloadPlate } from "../cad/exportClient";
 import HowToModal from "./HowToModal";
 
 export default function App() {
@@ -407,9 +408,10 @@ export default function App() {
             <SectionLabel>Plate</SectionLabel>
             <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
               {[
-                ["T", "thickness", 0.5, 5],
-                ["M", "margin", 1, 20],
+                ["T", "thickness", 0.5, 6],
+                ["M", "margin", 0, 30],
                 ["R", "cornerRadius", 0, 10],
+                ["C", "cutoutSize", 12, 16],
               ].map(([l, k, mn, mx]) => (
                 <PropLabel key={k} label={l}>
                   <input
@@ -435,6 +437,8 @@ export default function App() {
             <div style={{ display: "flex", gap: 5, flexWrap: "wrap" }}>
               <ExportBtn label="SVG" sub="Plate" onClick={() => download(exportSVG(keys, plateSettings), "plate.svg", "image/svg+xml")} />
               <ExportBtn label="DXF" sub="Plate" onClick={() => download(exportDXF(keys, plateSettings), "plate.dxf")} />
+              <ExportBtn label="STEP" sub="Plate 3D" onClick={() => downloadPlate(keys, plateSettings, "step")} />
+              <ExportBtn label="STL" sub="Plate 3D" onClick={() => downloadPlate(keys, plateSettings, "stl")} />
               <ExportBtn label="JSON" sub="KLE" onClick={() => download(exportKLE(keys), "layout.json", "application/json")} />
               <ExportBtn label="CSV" sub="KiCad" onClick={() => download(exportKiCadCSV(keys), "switches.csv")} />
             </div>
