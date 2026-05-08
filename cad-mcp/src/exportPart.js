@@ -1,5 +1,5 @@
-import { writeFileSync } from "node:fs";
-import { resolve, relative, isAbsolute } from "node:path";
+import { writeFileSync, mkdirSync } from "node:fs";
+import { resolve, relative, isAbsolute, dirname } from "node:path";
 import { buildPlate } from "../../shared/cad/parts/plate.js";
 
 const FORMATS = new Set(["stl", "step"]);
@@ -29,6 +29,7 @@ export async function exportPart({ partId, format, path }, keys, state, repoRoot
   // Node's Blob.arrayBuffer() returns a Promise — must await.
   const ab = await blob.arrayBuffer();
   const buf = Buffer.from(ab);
+  mkdirSync(dirname(abs), { recursive: true });
   writeFileSync(abs, buf);
   return { path: abs, bytes: buf.length, format };
 }

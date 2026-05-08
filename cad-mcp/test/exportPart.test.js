@@ -46,4 +46,10 @@ describe("exportPart", () => {
       exportPart({ partId: "plate", format: "obj", path: join(dir, "x.obj") }, oneKeyLayout, DEFAULT_STATE, repoRoot)
     ).rejects.toThrow(/format/);
   });
+
+  it("creates intermediate directories", async () => {
+    const out = join(dir, "deep", "nested", "out.stl");
+    await exportPart({ partId: "plate", format: "stl", path: out }, oneKeyLayout, DEFAULT_STATE, repoRoot);
+    expect(existsSync(out)).toBe(true);
+  });
 });
